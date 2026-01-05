@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Motorista Pro | Ultra Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --accent: #7c3aed;
+            --bg-main: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+
+        .dark {
+            --bg-main: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+        
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .glass {
+            background: rgba(var(--card-bg), 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 120px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tab-content { display: none; opacity: 0; transform: scale(0.98); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .tab-content.active { display: block; opacity: 1; transform: scale(1); }
+        
+        .nav-item.active { color: var(--primary); }
+        .nav-item.active .icon-container { background: #6366f1; color: white; box-shadow: 0 8px 15px -3px rgba(99, 102, 241, 0.4); }
+        
+        .card-main {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #1e293b, #0f172a);
+            transition: all 0.2s;
+        }
+        .dark .btn-primary {
+            background: linear-gradient(to right, #6366f1, #4f46e5);
+        }
+
+        .input-premium {
+            background: var(--bg-main);
+            border: 2px solid var(--border);
+            color: var(--text-main);
+            transition: all 0.2s;
+        }
+        .input-premium:focus {
+            background: var(--card-bg);
+            border-color: var(--primary);
+        }
+
+        @supports (padding: env(safe-area-inset-bottom)) {
+            nav { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Cabeçalho -->
+    <header class="fixed top-0 left-0 right-0 z-50 glass border-b border-slate-200/20 px-6 py-4 flex justify-between items-center h-20 dark:border-slate-800">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg">MP</div>
+            <div>
+                <h1 class="text-lg font-extrabold tracking-tight leading-none">Motorista<span class="text-indigo-600 font-medium font-sans">\Pro</span></h1>
+                <div class="flex items-center gap-1.5 mt-1">
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                    <span class="text-[9px] font-bold uppercase tracking-widest text-slate-400">Ultra Pro</span>
+                </div>
+            </div>
+        </div>
+        <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-lg shadow-sm">
+            <span id="dark-icon">🌙</span>
+        </button>
+    </header>
+
+    <main class="scroll-area pt-24 px-5 max-w-lg mx-auto w-full">
+        
+        <!-- Aba: Dashboard -->
+        <div id="dashboard" class="tab-content active space-y-6">
+            <!-- Gráfico de Ganhos Semanal -->
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-[2.5rem] border border-slate-100 dark:border-slate-700 shadow-sm">
+                <div class="flex justify-between items-center mb-4 px-2">
+                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Performance 7 Dias</h3>
+                    <button onclick="exportarDados()" class="text-[9px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-full font-bold uppercase tracking-tighter">Exportar CSV</button>
+                </div>
+                <div class="h-40 w-full">
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Card de Saldo -->
+            <div class="card-main rounded-[2.5rem] p-8 text-white relative overflow-hidden">
+                <div class="absolute right-[-20px] top-[-20px] w-40 h-40 bg-white opacity-10 rounded-full"></div>
+                <div class="relative z-10">
+                    <p class="text-indigo-100 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">Saldo Líquido</p>
+                    <h2 id="saldo-final" class="text-5xl font-extrabold tracking-tighter mb-8 text-white">R$ 0,00</h2>
+                    
+                    <div class="flex justify-between items-end">
+                        <div class="text-right">
+                            <p class="text-[9px] uppercase font-bold text-white/50 mb-1">Total Bruto</p>
+                            <p id="total-ganhos" class="text-xl font-black">R$ 0,00</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Métricas -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-700 shadow-sm">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-8 h-8 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl flex items-center justify-center text-sm">⛽</div>
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-tight">Média KM/L</span>
+                    </div>
+                    <p id="media-kml" class="text-2xl font-black tracking-tight leading-none">0.00</p>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-700 shadow-sm">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-8 h-8 bg-rose-50 dark:bg-rose-900/30 text-rose-600 rounded-xl flex items-center justify-center text-sm">📉</div>
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-tight">Gastos</span>
+                    </div>
+                    <p id="total-saidas" class="text-2xl font-black text-rose-500 tracking-tight leading-none">R$ 0,00</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <h3 class="text-sm font-black uppercase tracking-tighter italic ml-1">Cofres e Metas</h3>
+                <div id="container-reservas" class="grid grid-cols-1 gap-3"></div>
+            </div>
+        </div>
+
+        <!-- Aba: Ganhos -->
+        <div id="receitas" class="tab-content space-y-6">
+            <h2 class="text-2xl font-black tracking-tighter">Novo Ganho</h2>
+            <div class="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-700 space-y-6">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase text-slate-400 ml-2">Valor (R$)</label>
+                    <input type="number" id="valor-ganho" inputmode="decimal" placeholder="0,00" class="w-full text-4xl font-black p-6 input-premium rounded-3xl outline-none">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase text-slate-400 ml-2">Origem</label>
+                    <input type="text" id="desc-ganho" placeholder="Uber, 99, Particular..." class="w-full p-5 input-premium rounded-3xl outline-none font-bold">
+                </div>
+                <button onclick="salvarEntrada()" class="btn-primary w-full text-white font-black py-5 rounded-3xl shadow-xl text-lg uppercase tracking-widest">Salvar Ganho</button>
+            </div>
+            <div id="lista-ganhos" class="space-y-3 pb-4"></div>
+        </div>
+
+        <!-- Aba: Consumo -->
+        <div id="carro" class="tab-content space-y-6">
+            <h2 class="text-2xl font-black tracking-tighter italic">Cálculo Autonomia</h2>
+            <div class="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-700 space-y-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black uppercase text-slate-400 ml-2">KM Rodados</label>
+                        <input type="number" id="comb-km-rodado" inputmode="numeric" placeholder="330" class="w-full p-5 input-premium rounded-3xl outline-none font-black text-xl">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black uppercase text-slate-400 ml-2">Litros</label>
+                        <input type="number" id="comb-litros" inputmode="decimal" placeholder="40" class="w-full p-5 input-premium rounded-3xl outline-none font-black text-xl">
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase text-slate-400 ml-2">Custo Total (R$)</label>
+                    <input type="number" id="comb-valor" inputmode="decimal" placeholder="170" class="w-full p-5 input-premium rounded-3xl outline-none font-black text-xl">
+                </div>
+                <button onclick="salvarAbastecimento()" class="btn-primary w-full text-white font-black py-5 rounded-3xl shadow-xl text-lg uppercase tracking-widest">Calcular Rendimento</button>
+            </div>
+            <div id="lista-abastecimento" class="space-y-3 pb-4"></div>
+        </div>
+
+        <!-- Aba: Contas -->
+        <div id="casa" class="tab-content space-y-6">
+            <h2 class="text-2xl font-black tracking-tighter italic">Despesas & Saídas</h2>
+            <div class="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-700 space-y-6">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase text-slate-400 ml-2">Categoria</label>
+                    <select id="tipo-despesa" class="w-full p-5 input-premium rounded-3xl outline-none font-black appearance-none">
+                        <option value="casa">🏠 Casa</option>
+                        <option value="alimentacao">🍱 Alimentação Rua</option>
+                        <option value="manutencao">🔧 Manutenção</option>
+                        <option value="futeis">🎭 Futilidades</option>
+                        <option value="emergencia">🆘 Segurança</option>
+                        <option value="investimento">📈 Metas</option>
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase text-slate-400 ml-2">Valor (R$)</label>
+                    <input type="number" id="valor-despesa" inputmode="decimal" placeholder="0,00" class="w-full p-6 input-premium rounded-3xl outline-none font-black text-rose-500 text-3xl">
+                </div>
+                <button onclick="salvarDespesa()" class="btn-primary w-full text-white font-black py-5 rounded-3xl shadow-xl text-lg uppercase tracking-widest">Salvar Saída</button>
+            </div>
+            <div id="lista-despesas" class="space-y-3 pb-4"></div>
+        </div>
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 glass border-t border-slate-200/20 px-4 py-4 flex justify-around items-center z-50 h-24 dark:border-slate-800">
+        <button onclick="openTab('dashboard')" class="nav-item active flex flex-col items-center gap-2 flex-1">
+            <div class="icon-container w-14 h-10 rounded-2xl flex items-center justify-center text-xl">📊</div>
+            <span class="text-[9px] font-black uppercase tracking-widest">Dash</span>
+        </button>
+        <button onclick="openTab('receitas')" class="nav-item flex flex-col items-center gap-2 flex-1 text-slate-400">
+            <div class="icon-container w-14 h-10 rounded-2xl flex items-center justify-center text-xl">💰</div>
+            <span class="text-[9px] font-black uppercase tracking-widest">Ganhos</span>
+        </button>
+        <button onclick="openTab('carro')" class="nav-item flex flex-col items-center gap-2 flex-1 text-slate-400">
+            <div class="icon-container w-14 h-10 rounded-2xl flex items-center justify-center text-xl">⛽</div>
+            <span class="text-[9px] font-black uppercase tracking-widest">Consumo</span>
+        </button>
+        <button onclick="openTab('casa')" class="nav-item flex flex-col items-center gap-2 flex-1 text-slate-400">
+            <div class="icon-container w-14 h-10 rounded-2xl flex items-center justify-center text-xl">🏠</div>
+            <span class="text-[9px] font-black uppercase tracking-widest">Contas</span>
+        </button>
+    </nav>
+
+    <script>
+        // State
+        let dados = JSON.parse(localStorage.getItem('motorista_pro_ultra_v1')) || { ganhos: [], abastecimentos: [], despesas: [] };
+        let myChart;
+
+        // Dark Mode
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark');
+            const isDark = document.body.classList.contains('dark');
+            document.getElementById('dark-icon').innerText = isDark ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', isDark);
+            if(myChart) initChart(); // Redraw chart for colors
+        }
+
+        // Check Preference
+        if(localStorage.getItem('darkMode') === 'true') toggleDarkMode();
+
+        function openTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelectorAll('nav button').forEach(btn => { 
+                btn.classList.remove('active'); 
+                btn.classList.add('text-slate-400'); 
+            });
+            if(event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+                event.currentTarget.classList.remove('text-slate-400');
+            }
+            atualizarDashboard();
+        }
+
+        function formatBRL(val) { return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+        function salvarEntrada() {
+            const valor = parseFloat(document.getElementById('valor-ganho').value);
+            const desc = document.getElementById('desc-ganho').value || 'Corrida';
+            if(!valor) return;
+            dados.ganhos.push({ valor, desc, data: new Date().toISOString() });
+            save();
+            document.getElementById('valor-ganho').value = '';
+        }
+
+        function salvarAbastecimento() {
+            const km = parseFloat(document.getElementById('comb-km-rodado').value);
+            const litros = parseFloat(document.getElementById('comb-litros').value);
+            const valor = parseFloat(document.getElementById('comb-valor').value);
+            if(!km || !litros || !valor) return;
+            dados.abastecimentos.push({ km, litros, valor, media: km/litros, data: new Date().toISOString() });
+            save();
+            document.getElementById('comb-km-rodado').value = '';
+            document.getElementById('comb-litros').value = '';
+            document.getElementById('comb-valor').value = '';
+        }
+
+        function salvarDespesa() {
+            const tipo = document.getElementById('tipo-despesa').value;
+            const valor = parseFloat(document.getElementById('valor-despesa').value);
+            if(!valor) return;
+            dados.despesas.push({ tipo, valor, data: new Date().toISOString() });
+            save();
+            document.getElementById('valor-despesa').value = '';
+        }
+
+        function save() {
+            localStorage.setItem('motorista_pro_ultra_v1', JSON.stringify(dados));
+            atualizarDashboard();
+            renderListas();
+            initChart();
+        }
+
+        // Lógica de Gráfico
+        function initChart() {
+            const canvas = document.getElementById('weeklyChart');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if(myChart) myChart.destroy();
+
+            const last7Days = [...Array(7)].map((_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                return d.toLocaleDateString('pt-BR', { weekday: 'short' });
+            }).reverse();
+
+            const dailyTotals = [...Array(7)].map((_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - (6 - i));
+                const dayStr = d.toLocaleDateString('pt-BR');
+                return dados.ganhos
+                    .filter(g => new Date(g.data).toLocaleDateString('pt-BR') === dayStr)
+                    .reduce((a, b) => a + b.valor, 0);
+            });
+
+            const isDark = document.body.classList.contains('dark');
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: last7Days,
+                    datasets: [{
+                        label: 'Ganhos (R$)',
+                        data: dailyTotals,
+                        backgroundColor: '#6366f1',
+                        borderRadius: 8,
+                        barThickness: 20
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { display: false },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: isDark ? '#94a3b8' : '#64748b', font: { weight: 'bold', size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Exportação CSV
+        function exportarDados() {
+            let csv = "Tipo,Descricao,Valor,Data\n";
+            dados.ganhos.forEach(g => csv += `Ganho,${g.desc},${g.valor},${new Date(g.data).toLocaleString()}\n`);
+            dados.despesas.forEach(d => csv += `Despesa,${d.tipo},${d.valor},${new Date(d.data).toLocaleString()}\n`);
+            dados.abastecimentos.forEach(a => csv += `Abastecimento,${a.km}km,${a.valor},${new Date(a.data).toLocaleString()}\n`);
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `relatorio_motorista_${new Date().toLocaleDateString()}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function atualizarDashboard() {
+            const totalG = dados.ganhos.reduce((a, b) => a + b.valor, 0);
+            const totalA = dados.abastecimentos.reduce((a, b) => a + b.valor, 0);
+            const totalD = dados.despesas.reduce((a, b) => a + b.valor, 0);
+            const totalS = totalA + totalD;
+            
+            document.getElementById('total-ganhos').innerText = formatBRL(totalG);
+            document.getElementById('total-saidas').innerText = formatBRL(totalS);
+            document.getElementById('saldo-final').innerText = formatBRL(totalG - totalS);
+
+            const mediaFinal = dados.abastecimentos.length > 0 ? dados.abastecimentos.reduce((a, b) => a + b.media, 0) / dados.abastecimentos.length : 0;
+            document.getElementById('media-kml').innerText = mediaFinal.toFixed(2);
+
+            const categorias = { 
+                'alimentacao': '🍱 Alimentação', 
+                'manutencao': '🔧 Manutenção', 
+                'emergencia': '🆘 Segurança', 
+                'investimento': '📈 Metas',
+                'futeis': '🎭 Futilidades'
+            };
+
+            document.getElementById('container-reservas').innerHTML = Object.entries(categorias).map(([slug, label]) => {
+                const total = dados.despesas.filter(d => d.tipo === slug).reduce((a, b) => a + b.valor, 0);
+                return `<div class="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-100 dark:border-slate-700 flex justify-between items-center"><div class="flex items-center gap-4"><div class="w-10 h-10 bg-slate-50 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-sm shadow-sm">${label.split(' ')[0]}</div><div><p class="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">${label.split(' ')[1]}</p><p class="text-base font-black tracking-tight">${formatBRL(total)}</p></div></div></div>`;
+            }).join('');
+        }
+
+        function renderListas() {
+            const listG = document.getElementById('lista-ganhos');
+            if(listG) listG.innerHTML = dados.ganhos.slice(-3).reverse().map(g => `<div class="p-5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 flex justify-between items-center"><div><p class="text-[11px] font-black">${g.desc}</p><p class="text-[9px] text-slate-400 font-bold uppercase">${new Date(g.data).toLocaleDateString()}</p></div><span class="text-emerald-500 font-black text-sm">+ ${formatBRL(g.valor)}</span></div>`).join('');
+            
+            const listA = document.getElementById('lista-abastecimento');
+            if(listA) listA.innerHTML = dados.abastecimentos.slice(-3).reverse().map(a => `<div class="p-5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 flex justify-between items-center"><div><p class="text-[11px] font-black">${a.km}km rodados</p><p class="text-[9px] text-slate-400 font-bold uppercase">${new Date(a.data).toLocaleDateString()} • ${a.litros}L</p></div><span class="text-indigo-600 font-black text-sm">${a.media.toFixed(2)} km/L</span></div>`).join('');
+        }
+
+        window.onload = () => {
+            save();
+            initChart();
+        };
+    </script>
+</body>
+</html>
